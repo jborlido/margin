@@ -52,6 +52,7 @@ sessions.
 | 2026-10-27 | Name: `margin` | Reads naturally (`margin open deck.pdf`); free on PyPI, Homebrew and GitHub |
 | 2026-10-27 | License: PolyForm Noncommercial 1.0.0 | Public repo, free for personal/noncommercial use, João keeps commercial rights |
 | 2026-10-27 | Session details in a JSON file, not argv | Zellij re-splits the pane command on whitespace and broke `--build "cd x && make"` |
+| 2026-10-27 | The caller's PATH travels in the session file and the pane applies it | The Zellij server spawns panes with its own minimal PATH (no `/opt/homebrew/bin`), so `pdfinfo` was not found; `open` also checks for poppler up front |
 
 ## Environment facts (João's Mac)
 
@@ -65,6 +66,8 @@ sessions.
   mutool, timg/chafa/viu, Skim.
 - Kitty graphics pass through Zellij inside Ghostty (verified by drawing a
   page in a shell pane).
+- The Zellij server's PATH is `/usr/bin:/bin:/usr/sbin:/sbin:/Applications/Ghostty.app/Contents/MacOS`;
+  panes it spawns via `zellij action new-pane` inherit it, not the shell's.
 - João's documents: the CV is LaTeX (`resume.tex`, needs the Avenir Next
   system font and `photo.png`); other documents will come from pandoc or the
   pptx skill. Source of truth for the CV is the knowledge-vault repo; the copy

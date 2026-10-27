@@ -5,10 +5,12 @@
   margin view --session FILE
         the pane itself (what `open` launches)
 """
-import argparse, json, os, sys, tempfile, traceback
+import argparse, json, os, shutil, sys, tempfile, traceback
 from datetime import datetime
 from . import bridge as bridges
 from .viewer import Viewer
+
+POPPLER_TOOLS = ("pdfinfo", "pdftoppm", "pdftotext")
 
 
 def launcher():
@@ -35,10 +37,16 @@ def cmd_open(a, bridge):
     target = a.target or bridge.current_pane()
     if not target:
         sys.exit("cannot tell which pane Claude Code is in; pass --target")
+    missing = [t for t in POPPLER_TOOLS if not shutil.which(t)]
+    if missing:
+        sys.exit(f"margin needs poppler: {', '.join(missing)} not found on PATH")
     fd, session = tempfile.mkstemp(prefix="margin-", suffix=".json")
     with os.fdopen(fd, "w") as f:
+        # PATH travels in the session file: the multiplexer server spawns the pane with its own,
+        # usually minimal, environment (Zellij under Ghostty has no /opt/homebrew/bin).
         json.dump({"pdf": pdf, "source": os.path.abspath(a.source) if a.source else None,
-                   "build": a.build, "target": target, "bridge": bridge.NAME}, f)
+                   "build": a.build, "target": target, "bridge": bridge.NAME,
+                   "path": os.environ.get("PATH", "")}, f)
     bridge.new_pane(launcher() + ["view", "--session", session], f"margin {os.path.basename(pdf)}")
     bridge.send(target, intro_message(pdf, os.path.abspath(a.source) if a.source else None, a.build))
     print(f"margin pane opened; review session announced to {target}")
@@ -46,6 +54,8 @@ def cmd_open(a, bridge):
 
 def cmd_view(a):
     d = json.load(open(a.session))
+    if d.get("path"):
+        os.environ["PATH"] = d["path"]
     bridge = bridges.ALL[d["bridge"]]
     try:
         Viewer(d["pdf"], bridge, d["target"]).loop()
