@@ -1,6 +1,6 @@
 # margin — status and next steps
 
-Last updated: 2026-10-27. Keep this file current; it is the hand-off between
+Last updated: 2026-10-28. Keep this file current; it is the hand-off between
 sessions.
 
 ## Where things stand
@@ -8,7 +8,9 @@ sessions.
 - The loop works end to end on João's Mac, confirmed in a real review session
   on 2026-10-28: click, comment, `[review]` message in Claude Code, source
   edit, rebuild, pane redraw. First trial findings (PATH, flicker, no on-page
-  highlight) are fixed; a second trial should confirm them.
+  highlight) are fixed and looked better in a quick second run; João will
+  validate properly on 2026-10-29. Two comments were acted on in the trial
+  (a tone rewrite and removing an old entry from the scratch CV copy).
 - First commit pushed to `github.com/jborlido/margin` (master).
 - `uv` is not installed on João's Mac; the dev launcher `bin/margin` works
   without it. The installer will add uv later.
