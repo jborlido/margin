@@ -79,6 +79,13 @@ protocol, so the page image would not show.
 Native Windows without WSL is not supported yet. It needs a Windows console
 backend for the pane and a tested WezTerm bridge; see `docs/design.md`.
 
+## Telling Claude Code to use it
+
+Copy `install/claude-instructions.md` into `~/.claude/CLAUDE.md` and allow
+`Bash(margin open *)` and `Bash(margin doctor)` in Claude Code's permissions.
+After that, "open deck.pdf" in any session opens the margin pane, and Claude
+acts on `[review]` comments without being told how each time.
+
 ## Using it
 
 From the Claude Code prompt:
