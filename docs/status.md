@@ -29,12 +29,14 @@ sessions.
    go-to page. Done 2026-10-28: the anchored line is tinted on the page
    image, and typing no longer re-sends the image (first trial found the
    pane flickering on every keystroke and giving no on-page feedback).
-3. **`margin doctor`**: check poppler, multiplexer, Kitty passthrough, and
-   that the bridge can reach the Claude pane.
-4. **Installers**: `install/install.sh` (macOS + Linux) then `install.ps1`
-   (Windows native via WezTerm; `--wsl` route). Design in `docs/design.md`.
-   Keep the repo clonable onto João's backup drive: a fresh Mac must be able
-   to run the installer with nothing but the drive.
+3. **Install path** (2026-10-29): Homebrew formula in `Formula/margin.rb`,
+   `margin doctor`, and `install/README.md` for macOS, Linux and Windows via
+   WSL2 are written. Remaining: João pushes master so the tap works; create
+   `jborlido/homebrew-tap` for the one-line form; tag `v0.1.0` and add the
+   stable `url`/`sha256` to the formula; try the WSL2 steps on a Windows box.
+4. **Claude Code plugin** before the installer polish: `/margin <pdf>` skill
+   with source and build inference, plus a `UserPromptSubmit` hook that injects
+   the `[review]` handling rule so no repo needs it in CLAUDE.md.
 5. **tmux and WezTerm bridges**: test them; they are written blind.
 6. **Claude Code plugin** (`adapters/claude-plugin/`): a `/margin <pdf>`
    command that opens the pane and attaches source path, build command and
@@ -55,6 +57,8 @@ sessions.
 | 2026-10-27 | Name: `margin` | Reads naturally (`margin open deck.pdf`); free on PyPI, Homebrew and GitHub |
 | 2026-10-27 | License: PolyForm Noncommercial 1.0.0 | Public repo, free for personal/noncommercial use, João keeps commercial rights |
 | 2026-10-27 | Session details in a JSON file, not argv | Zellij re-splits the pane command on whitespace and broke `--build "cd x && make"` |
+| 2026-10-29 | Homebrew tap is the installer; Windows via WSL2 + WezTerm; native Windows deferred | One command pulls poppler, Zellij and Python; casks (Ghostty, Claude Code) cannot be formula deps; the viewer is POSIX-only today |
+| 2026-10-29 | Claude Code integration will be a plugin (skill + hook), not an MCP server | Comments arrive as typed input, not tool calls; what Claude needs is instructions, which a skill and a prompt hook deliver |
 | 2026-10-27 | The caller's PATH travels in the session file and the pane applies it | The Zellij server spawns panes with its own minimal PATH (no `/opt/homebrew/bin`), so `pdfinfo` was not found; `open` also checks for poppler up front |
 
 ## Environment facts (João's Mac)

@@ -30,17 +30,24 @@ are planned; see [docs/design.md](docs/design.md).
   internals and a Claude Code update cannot break it.
 - The pane watches the PDF and redraws when the rebuild lands.
 
-## Requirements (today)
+## Install
 
-macOS or Linux, Ghostty (or another terminal with Kitty graphics), Zellij 0.45+,
-poppler (`pdftoppm`, `pdftotext`, `pdfinfo`), Python 3.10+. No Python dependencies.
+```
+brew tap jborlido/margin https://github.com/jborlido/margin
+brew install --HEAD margin
+```
+
+That brings in poppler, Zellij and Python. You also need a terminal that draws
+Kitty graphics (Ghostty, Kitty or WezTerm) and Claude Code. Full steps for
+macOS, Linux and Windows (via WSL2) are in [install/README.md](install/README.md).
+Check an install with `! margin doctor` from the Claude Code prompt.
 
 ## Try it
 
 From the Claude Code prompt (so the pane targets that session):
 
 ```
-! ~/dev/personal/margin/bin/margin open deck.pdf --source deck.md --build "pandoc deck.md -o deck.pdf"
+! margin open deck.pdf --source deck.md --build "pandoc deck.md -o deck.pdf"
 ```
 
 Keys in the pane: click to anchor, `/text` to anchor by search, Enter to send,

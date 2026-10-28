@@ -4,6 +4,8 @@
         open the margin pane beside this one and tell Claude a review session started
   margin view --session FILE
         the pane itself (what `open` launches)
+  margin doctor
+        check that everything margin needs is installed and reachable
 """
 import argparse, json, os, shutil, sys, tempfile, traceback
 from datetime import datetime
@@ -52,6 +54,49 @@ def cmd_open(a, bridge):
     print(f"margin pane opened; review session announced to {target}")
 
 
+def terminal_name():
+    env = os.environ
+    if env.get("GHOSTTY_RESOURCES_DIR") or env.get("TERM_PROGRAM", "").lower() == "ghostty":
+        return "Ghostty"
+    if env.get("KITTY_WINDOW_ID") or env.get("TERM") == "xterm-kitty":
+        return "Kitty"
+    if env.get("WEZTERM_EXECUTABLE") or env.get("TERM_PROGRAM") == "WezTerm":
+        return "WezTerm"
+    return None
+
+
+def cmd_doctor():
+    """Print one line per requirement; exit 1 if a required one is missing."""
+    rows = []   # (state, what, how to fix): state True = ok, False = missing, None = cannot tell
+    v = sys.version_info
+    rows.append((v >= (3, 10), f"python {v.major}.{v.minor}.{v.micro}", "needs Python 3.10 or newer"))
+    for t in POPPLER_TOOLS:
+        p = shutil.which(t)
+        rows.append((bool(p), f"{t}: {p or 'not found'}", "brew install poppler"))
+    b = bridges.detect()
+    rows.append((b is not None, f"multiplexer: {b.NAME if b else 'none'}",
+                 "run this from a shell inside Zellij (or tmux / WezTerm)"))
+    if b:
+        p = shutil.which(b.NAME)
+        rows.append((bool(p), f"{b.NAME} cli: {p or 'not found'}", f"brew install {b.NAME}"))
+        pane = b.current_pane()
+        rows.append((pane is not None, f"this pane: {pane or 'unknown'}", "margin open will need --target"))
+    term = terminal_name()
+    seen = term or os.environ.get("TERM_PROGRAM") or os.environ.get("TERM") or "unknown"
+    rows.append((True if term else None, f"terminal: {seen}",
+                 "needs Kitty graphics: Ghostty, Kitty, or WezTerm with enable_kitty_graphics = true"))
+    p = shutil.which("claude")
+    rows.append((bool(p), f"claude: {p or 'not found'}", "brew install --cask claude-code"))
+    missing = False
+    for state, what, fix in rows:
+        tag = {True: "ok     ", False: "MISSING", None: "check  "}[state]
+        print(f"  {tag}  {what}" + ("" if state else f"   -> {fix}"))
+        missing |= state is False
+    print("\nfix the MISSING lines above" if missing else
+          "\nready: from the Claude Code prompt run  ! margin open <pdf> --source <src> --build \"<cmd>\"")
+    return 1 if missing else 0
+
+
 def cmd_view(a):
     d = json.load(open(a.session))
     if d.get("path"):
@@ -88,9 +133,12 @@ def main(argv=None):
     o.add_argument("--target", help="pane id of the Claude Code pane (default: the current pane)")
     v = sub.add_parser("view", help="(internal) run the pane")
     v.add_argument("--session", required=True)
+    sub.add_parser("doctor", help="check that everything margin needs is installed")
     a = p.parse_args(argv)
     if a.cmd == "view":
         return cmd_view(a)
+    if a.cmd == "doctor":
+        sys.exit(cmd_doctor())
     bridge = bridges.detect()
     if bridge is None:
         sys.exit("margin needs to run inside Zellij, tmux or WezTerm")

@@ -64,15 +64,22 @@ If the plugin API changes, the Zellij path still works.
 | Windows native | WezTerm | WezTerm panes | `wezterm cli send-text --pane-id` | Kitty |
 | Windows via WSL2 | WezTerm on host | Zellij in WSL | Zellij | Kitty |
 
-## Installers (planned)
+## Installing (decided 2026-10-29)
 
-- `install/install.sh` — macOS + Linux: brew / apt / dnf / pacman; Ghostty,
-  Zellij, poppler, uv, Claude Code, margin, layout + config defaults (never
-  overwriting existing config).
-- `install/install.ps1` — Windows native (winget: WezTerm, uv, Claude Code;
-  poppler via scoop/winget); `--wsl` sets up WSL2 and runs `install.sh` inside.
-- `margin doctor` — checks dependencies, runs the graphics passthrough test,
-  confirms the bridge can reach a Claude pane.
+- **Homebrew is the installer** on macOS and Linux: `Formula/margin.rb` in this
+  repo, tapped directly (`brew tap jborlido/margin <repo url>`) until a
+  `jborlido/homebrew-tap` repo makes it `brew install jborlido/tap/margin`.
+  The formula depends on poppler, Zellij and python@3.14 and ships the package
+  under `libexec` with a Python launcher script, no pip and no build step.
+  Ghostty and Claude Code are casks, which a formula cannot depend on; the
+  formula's caveats and `margin doctor` cover them.
+- **Windows goes through WSL2** with WezTerm as the host terminal
+  (`enable_kitty_graphics = true`); the Linux install runs inside. Native
+  Windows (WezTerm panes, Scoop bucket for one-command install) needs a console
+  backend for the viewer and is deferred.
+- `margin doctor` checks Python, poppler, the multiplexer and its CLI, the
+  current pane id, the terminal, and `claude` on PATH.
+- Steps for users: `install/README.md`.
 
 ## Verified so far (2026-10-21 → 2026-10-27, macOS 27, Ghostty 1.3.1, Zellij 0.45.1)
 
