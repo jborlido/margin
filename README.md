@@ -34,6 +34,7 @@ are planned; see [docs/design.md](docs/design.md).
 
 ```
 brew tap jborlido/margin https://github.com/jborlido/margin
+brew trust jborlido/margin
 brew install --HEAD margin
 ```
 

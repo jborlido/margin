@@ -31,7 +31,9 @@ sessions.
    pane flickering on every keystroke and giving no on-page feedback).
 3. **Install path** (2026-10-29): Homebrew formula in `Formula/margin.rb`,
    `margin doctor`, and `install/README.md` for macOS, Linux and Windows via
-   WSL2 are written. Remaining: João pushes master so the tap works; create
+   WSL2 are written and pushed; the documented install was run on João's Mac
+   on 2026-10-29 (`brew tap` + `brew trust` + `brew install --HEAD`, then
+   `margin doctor` all green). Remaining: create
    `jborlido/homebrew-tap` for the one-line form; tag `v0.1.0` and add the
    stable `url`/`sha256` to the formula; try the WSL2 steps on a Windows box.
 4. **Claude Code plugin** before the installer polish: `/margin <pdf>` skill

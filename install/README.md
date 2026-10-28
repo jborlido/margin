@@ -19,11 +19,13 @@ only supplies the terminal. See [Windows](#windows-wsl2).
 3. margin, with poppler, Zellij and Python pulled in as dependencies:
    ```
    brew tap jborlido/margin https://github.com/jborlido/margin
+   brew trust jborlido/margin
    brew install --HEAD margin
    ```
-   `--HEAD` builds from the master branch; it goes away at the first tagged
-   release, and the two lines will collapse into `brew install jborlido/tap/margin`
-   once the tap repository exists.
+   `brew trust` is required by Homebrew for any tap outside homebrew-core; it
+   marks this tap as one you accept formulas from. `--HEAD` builds from the
+   master branch; it goes away at the first tagged release, and the lines will
+   collapse into `brew install jborlido/tap/margin` once the tap repository exists.
 4. Open Ghostty, start Zellij, start `claude` in a pane.
 5. From the Claude Code prompt, check the install (the `!` prefix runs a
    shell command in that pane, which is what margin needs to see):
@@ -93,5 +95,5 @@ The pane opens to the right. Click a line, type a comment, press Enter. Keys:
 ```
 brew upgrade --fetch-HEAD margin     # HEAD installs
 brew uninstall margin
-brew untap jborlido/margin
+brew untap jborlido/margin           # also forgets the trust
 ```
