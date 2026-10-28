@@ -1,7 +1,7 @@
 """The margin pane: page image, click-to-anchor, comment input, rebuild watch."""
 import os, re, select, shutil, signal, sys, termios, tty
 from datetime import datetime
-from .render import ESC, cell_size, page_count, render_png, kitty_draw
+from .render import ESC, cell_size, page_count, render_page, highlight, png_encode, kitty_draw
 from .anchor import page_lines, nearest_line, search_line
 
 
@@ -19,7 +19,12 @@ class Viewer:
         os.makedirs(self.tmp, exist_ok=True)
         self.lines, self.page_size = page_lines(self.pdf, self.page)
         self.img_cols = self.img_rows = 1
-        self.dirty = True
+        self.raster = None          # (key, width, height, rgb) of the rendered page
+        self.png_cache = {}         # (key, anchor index) -> encoded PNG
+        self.image_id = 1           # alternates 1/2 so the new image lands before the old is dropped
+        self.drawn_size = None
+        self.dirty = True           # footer text needs redrawing
+        self.redraw_image = True    # page image needs re-sending (page, anchor, size or PDF changed)
 
     # layout -------------------------------------------------------------
     def layout(self):
@@ -37,47 +42,81 @@ class Viewer:
         return cols, rows, cw
 
     def draw(self):
+        """Redraw the footer; re-send the page image only when something on it changed."""
         w = sys.stdout
         cols, rows, cw = self.layout()
-        w.write(f"{ESC}[2J{ESC}[H")
-        try:
-            png = render_png(self.pdf, self.page, self.img_cols * cw, self.tmp)
-            kitty_draw(w, png, self.img_cols, self.img_rows)
-        except Exception as e:
-            w.write(f"(render failed: {e})")
+        if self.redraw_image:
+            if self.drawn_size != (self.img_cols, self.img_rows):
+                w.write(f"{ESC}[2J")
+                self.drawn_size = (self.img_cols, self.img_rows)
+            w.write(f"{ESC}[H")
+            try:
+                self.draw_image(w, cw)
+            except Exception as e:
+                w.write(f"(render failed: {e})")
+            self.redraw_image = False
         y = self.img_rows + 1
         name = os.path.basename(self.pdf)
-        w.write(f"{ESC}[{y};1H{ESC}[1m{name}{ESC}[0m  page {self.page}/{self.pages}   "
+
+        def line(row, text):
+            w.write(f"{ESC}[{row};1H{ESC}[2K{text}")
+
+        line(y, f"{ESC}[1m{name}{ESC}[0m  page {self.page}/{self.pages}   "
                 f"{ESC}[2m[ ] page  / search  click anchor  Enter send  q quit{ESC}[0m  {self.status}")
-        for i, entry in enumerate(self.log[-3:]):
-            w.write(f"{ESC}[{y + 1 + i};1H{ESC}[2m{entry[:cols - 1]}{ESC}[0m")
+        recent = self.log[-3:]
+        for i in range(3):
+            line(y + 1 + i, f"{ESC}[2m{recent[i][:cols - 1]}{ESC}[0m" if i < len(recent) else "")
         anchor = f"«{self.anchor[0][:cols - 12]}»" if self.anchor else "(whole page)"
-        w.write(f"{ESC}[{y + 4};1H{ESC}[36manchor{ESC}[0m {anchor}")
-        w.write(f"{ESC}[{y + 5};1H{ESC}[33m>{ESC}[0m {self.buf}")
+        line(y + 4, f"{ESC}[36manchor{ESC}[0m {anchor}")
+        line(y + 5, f"{ESC}[33m>{ESC}[0m {self.buf}")
         w.write(f"{ESC}[{y + 5};{3 + len(self.buf)}H")
         w.flush()
         self.dirty = False
+
+    def draw_image(self, w, cw):
+        key = (self.page, int(self.img_cols * cw), self.mtime)
+        if not self.raster or self.raster[0] != key:
+            self.raster = (key, *render_page(self.pdf, self.page, key[1], self.tmp))
+            self.png_cache.clear()
+        _, iw, ih, rgb = self.raster
+        which = self.anchor[1] if self.anchor else None
+        png = self.png_cache.get(which)
+        if png is None:
+            if which is not None:
+                pw, ph = self.page_size
+                _, x0, y0, x1, y1 = self.lines[which]
+                sx, sy = iw / pw, ih / ph
+                rgb = highlight(iw, ih, rgb, (x0 * sx, y0 * sy, x1 * sx, y1 * sy))
+            png = self.png_cache[which] = png_encode(iw, ih, rgb)
+        old, self.image_id = self.image_id, 3 - self.image_id
+        kitty_draw(w, png, self.img_cols, self.img_rows, self.image_id, old)
+
+    def set_anchor(self, anchor):
+        if anchor != self.anchor:
+            self.anchor = anchor
+            self.redraw_image = True
+        self.dirty = True
 
     # actions ------------------------------------------------------------
     def goto(self, page):
         self.page = max(1, min(self.pages, page))
         self.lines, self.page_size = page_lines(self.pdf, self.page)
         self.anchor = None
-        self.dirty = True
+        self.redraw_image = self.dirty = True
 
     def anchor_at_cell(self, x, y):
         i = nearest_line(self.lines, self.page_size, x, y, self.img_cols, self.img_rows)
         if i is not None:
-            self.anchor = (self.lines[i][0], i)
-            self.dirty = True
+            self.set_anchor((self.lines[i][0], i))
 
     def anchor_search(self, needle):
         i = search_line(self.lines, needle)
         if i is None:
             self.status = f"not found: {needle}"
+            self.dirty = True
         else:
-            self.anchor, self.status = (self.lines[i][0], i), ""
-        self.dirty = True
+            self.status = ""
+            self.set_anchor((self.lines[i][0], i))
 
     def send(self, comment):
         where = f"page {self.page}"
@@ -85,8 +124,7 @@ class Viewer:
             where += f", at the line «{self.anchor[0]}»"
         self.bridge.send(self.target, f"[review] {os.path.basename(self.pdf)}, {where}: {comment}")
         self.log.append(f"{datetime.now():%H:%M:%S} sent  {where}: {comment}")
-        self.anchor = None
-        self.dirty = True
+        self.set_anchor(None)
 
     def check_rebuilt(self):
         try:
@@ -100,7 +138,7 @@ class Viewer:
                 self.page = min(self.page, self.pages)
                 self.lines, self.page_size = page_lines(self.pdf, self.page)
                 self.status = f"{ESC}[32mrebuilt {datetime.now():%H:%M:%S}{ESC}[0m"
-                self.dirty = True
+                self.redraw_image = self.dirty = True
             else:
                 self.pending_mtime = m
 
@@ -110,10 +148,10 @@ class Viewer:
         old = termios.tcgetattr(fd)
         tty.setraw(fd)
         sys.stdout.write(f"{ESC}[?1049h{ESC}[?1000h{ESC}[?1006h{ESC}[?25h")
-        signal.signal(signal.SIGWINCH, lambda *_: setattr(self, "dirty", True))
+        signal.signal(signal.SIGWINCH, lambda *_: setattr(self, "redraw_image", True) or setattr(self, "dirty", True))
         try:
             while True:
-                if self.dirty:
+                if self.dirty or self.redraw_image:
                     self.draw()
                 r, _, _ = select.select([fd], [], [], 0.5)
                 if not r:
@@ -146,8 +184,8 @@ class Viewer:
                         j += 1
                     i = j + 1
                     continue
-                self.anchor, self.buf = None, ""
-                self.dirty = True
+                self.buf = ""
+                self.set_anchor(None)
                 i += 1
                 continue
             if ch in ("\r", "\n"):
@@ -171,7 +209,7 @@ class Viewer:
             elif ch == "[" and not self.buf:
                 self.goto(self.page - 1)
             elif ch == "r" and not self.buf:
-                self.dirty = True
+                self.raster, self.redraw_image, self.dirty = None, True, True
             elif ch.isprintable():
                 self.buf += ch; self.dirty = True
             i += 1

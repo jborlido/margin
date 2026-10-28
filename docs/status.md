@@ -5,11 +5,10 @@ sessions.
 
 ## Where things stand
 
-- The loop works end to end on João's Mac: `bin/margin open` opens the pane
-  to the right of Claude Code, draws the page, and the session-start message
-  arrives in Claude Code as a user message. Clicking, commenting and the
-  rebuild refresh have only been exercised in a pseudo-terminal smoke test,
-  not yet by João in a real review session. **That trial is the next step.**
+- The loop works end to end on João's Mac, confirmed in a real review session
+  on 2026-10-28: click, comment, `[review]` message in Claude Code, source
+  edit, rebuild, pane redraw. First trial findings (PATH, flicker, no on-page
+  highlight) are fixed; a second trial should confirm them.
 - First commit pushed to `github.com/jborlido/margin` (master).
 - `uv` is not installed on João's Mac; the dev launcher `bin/margin` works
   without it. The installer will add uv later.
@@ -22,10 +21,12 @@ sessions.
    does typing feel immediate; does the page redraw by itself after the
    rebuild; do Claude's edits match the comment. Fix what the trial shows
    before adding features.
-2. **Pane ergonomics** likely needed after the trial: show the chosen line
-   highlighted on the image; let a comment cover a region (drag) rather than
-   one line; keep a scrollable history of sent comments with their state
-   (sent / Claude replied / rebuilt); `g <n>` go-to page.
+2. **Pane ergonomics** likely needed after the trial: let a comment cover a
+   region (drag) rather than one line; keep a scrollable history of sent
+   comments with their state (sent / Claude replied / rebuilt); `g <n>`
+   go-to page. Done 2026-10-28: the anchored line is tinted on the page
+   image, and typing no longer re-sends the image (first trial found the
+   pane flickering on every keystroke and giving no on-page feedback).
 3. **`margin doctor`**: check poppler, multiplexer, Kitty passthrough, and
    that the bridge can reach the Claude pane.
 4. **Installers**: `install/install.sh` (macOS + Linux) then `install.ps1`
